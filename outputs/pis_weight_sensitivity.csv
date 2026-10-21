@@ -1,0 +1,7 @@
+﻿weights,AUC_pressure,spearman_team_rank_vs_baseline,spearman_team_PISadj_vs_pressure_rate,top5_teams
+baseline (.45/.40/.15),0.798,1.0,-0.133,"ARI, BAL, KC, LA, BUF"
+equal (1/3 each),0.744,0.967,-0.008,"ARI, BAL, BUF, KC, LA"
+no area (.5/.5/0),0.816,0.993,-0.135,"ARI, BAL, LA, KC, BUF"
+cushion heavy (.7/.2/.1),0.78,0.988,-0.109,"BAL, ARI, KC, LA, BUF"
+clean heavy (.2/.7/.1),0.826,0.976,-0.176,"ARI, LA, KC, BAL, BUF"
+area heavy (.3/.3/.4),0.716,0.961,-0.014,"ARI, BAL, BUF, KC, LA"

@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Parquet cache (rebuilt by `python main.py --force`)
+data/processed/

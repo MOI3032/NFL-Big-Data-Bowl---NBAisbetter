@@ -1,0 +1,7 @@
+﻿step,plays_remaining
+all plays in plays.csv,8557
+passResult in C/I/S/IN (drops scrambles R),8108
+at least one 'Pass Rush' player,8107
+has a 'Pass' (QB) player,8107
+weeks 1-8,8107
+has ball_snap + end event in tracking,8057

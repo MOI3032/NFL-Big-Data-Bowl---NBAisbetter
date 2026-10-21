@@ -1,0 +1,13 @@
+﻿label,score,AUC,point_biserial_r,p_value
+pressure_pff,PIS (low = pressure),0.7975,-0.5267,0.0
+pressure_pff,PIS_adj (time-to-throw adjusted),0.7396,-0.4051,0.0
+pressure_pff,time_to_pressure (censored = clean),0.8029,0.627,0.0
+pressure_pff,time_to_throw (baseline),0.7405,0.419,
+sack,PIS (low = pressure),0.9509,-0.4654,0.0
+sack,PIS_adj (time-to-throw adjusted),0.8937,-0.3735,0.0
+sack,time_to_pressure (censored = clean),0.8597,0.3638,0.0
+sack,time_to_throw (baseline),0.8529,0.3288,
+beaten,PIS (low = pressure),0.6878,-0.3342,0.0
+beaten,PIS_adj (time-to-throw adjusted),0.6702,-0.298,0.0
+beaten,time_to_pressure (censored = clean),0.6924,0.4015,0.0
+beaten,time_to_throw (baseline),0.599,0.1569,

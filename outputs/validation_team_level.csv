@@ -1,0 +1,7 @@
+﻿team_score,vs,spearman_rho,p_value
+PIS,pressure_rate_pff,-0.2309,0.2035
+PIS,sack_rate,-0.0398,0.8289
+PIS,beaten_rate,-0.4523,0.0093
+PIS_adj,pressure_rate_pff,-0.1327,0.4691
+PIS_adj,sack_rate,-0.0207,0.9104
+PIS_adj,beaten_rate,-0.438,0.0122
