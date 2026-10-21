@@ -1,0 +1,18 @@
+# On n'embarque PAS dans l'image :
+.git
+.venv
+__pycache__
+*.pyc
+.ipynb_checkpoints
+
+# Le tracking brut (810 Mo) : l'app utilise data/replay/frames.parquet (~29 Mo) à la place.
+nfl-big-data-bowl-regional-event-data-main/data/tracking/
+
+# Le cache parquet du pipeline (recalculable), et les figures exportées (recalculables).
+data/processed/
+outputs/*.png
+outputs/*.html
+
+# Le notebook et les logs
+analysis.ipynb
+*.log

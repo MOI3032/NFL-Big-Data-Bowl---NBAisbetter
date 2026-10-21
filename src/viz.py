@@ -67,14 +67,39 @@ def _hover(d: pd.DataFrame) -> list[str]:
             + "<br>" + d.pff_role + "<br>" + d.pff_positionLinedUp.fillna("")).tolist()
 
 
-@lru_cache(maxsize=64)
-def play_frames(game_id: int, play_id: int, pad_frames: int = 5, radius: float = C.PRESSURE_RADIUS):
-    """Normalised tracking of one play + per-frame pocket summary.
+REPLAY_CACHE = C.ROOT / "data" / "replay" / "frames.parquet"
 
-    Returns dict(t=tracking rows, fs=frame summary, snap, end, end_event, play, los_x).
+
+@lru_cache(maxsize=1)
+def _replay_cache() -> pd.DataFrame | None:
+    """Compact replay slice built by build_replay_cache.py (~29 MB), if present."""
+    if REPLAY_CACHE.exists():
+        df = pd.read_parquet(REPLAY_CACHE)
+        for c in ("side", "pff_role", "pff_positionLinedUp"):
+            df[c] = df[c].astype(object)
+        return df
+    return None
+
+
+def _play_tracking(game_id: int, play_id: int, pad_frames: int):
+    """Return (tracking rows snap-pad..end+pad, snap, end, end_event, play).
+
+    Uses the compact parquet cache when available (fast, deploy-friendly); falls
+    back to the raw per-game CSV so local runs work without the cache.
     """
     plays = load_plays()
     play = plays[(plays.gameId == game_id) & (plays.playId == play_id)].iloc[0]
+    cache = _replay_cache()
+    if cache is not None:
+        t = cache[(cache.gameId == game_id) & (cache.playId == play_id)].copy()
+        if len(t):
+            snap, end = int(t.snap_frame.iloc[0]), int(t.end_frame.iloc[0])
+            t["displayName"] = t.displayName.astype(object)
+            # end_event only drives the "sack vs throw" wording; recover it from plays
+            end_event = "qb_sack" if play.passResult == "S" else "pass_forward"
+            t = t[t.frameId.between(max(1, snap - pad_frames), end + pad_frames)].reset_index(drop=True)
+            return t, snap, end, end_event, play
+
     t = load_tracking_game(game_id)
     t = t[t.playId == play_id].copy()
     win = play_windows(t).iloc[0]
@@ -88,6 +113,16 @@ def play_frames(game_id: int, play_id: int, pad_frames: int = 5, radius: float =
     t["side"] = np.where(t.team.eq("football"), "ball",
                          np.where(t.team.eq(play.possessionTeam), "off", "def"))
     t = t[t.frameId.between(max(1, snap - pad_frames), end + pad_frames)].reset_index(drop=True)
+    return t, snap, end, str(win.end_event), play
+
+
+@lru_cache(maxsize=64)
+def play_frames(game_id: int, play_id: int, pad_frames: int = 5, radius: float = C.PRESSURE_RADIUS):
+    """Normalised tracking of one play + per-frame pocket summary.
+
+    Returns dict(t=tracking rows, fs=frame summary, snap, end, end_event, play, los_x).
+    """
+    t, snap, end, end_event, play = _play_tracking(game_id, play_id, pad_frames)
     los_x = float(t[(t.side == "ball") & (t.frameId == snap)].x.iloc[0])
 
     rows = []
@@ -109,7 +144,7 @@ def play_frames(game_id: int, play_id: int, pad_frames: int = 5, radius: float =
     was_out = (~w.d_min.le(radius)).cummax()
     hit = w[inside & was_out]
     p_frame = int(hit.frameId.iloc[0]) if len(hit) else None
-    return dict(t=t, fs=fs, snap=snap, end=end, end_event=str(win.end_event), play=play,
+    return dict(t=t, fs=fs, snap=snap, end=end, end_event=end_event, play=play,
                 los_x=los_x, pressure_frame=p_frame)
 
 

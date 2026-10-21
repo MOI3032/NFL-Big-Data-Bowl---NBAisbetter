@@ -8,6 +8,7 @@ Local tool only: bound to 127.0.0.1, no authentication.
 from __future__ import annotations
 
 import argparse
+import os
 from functools import lru_cache
 
 import numpy as np
@@ -611,6 +612,7 @@ tab_blk = html.Div([
 # App
 # =========================================================================== #
 app = Dash(__name__, title="Pocket Integrity · NFL 2021", suppress_callback_exceptions=True)
+server = app.server  # WSGI entry point for gunicorn (production / Hugging Face Spaces)
 app.layout = html.Div([
     html.Div([html.H1("Protection de passe · Pocket Integrity Score & Blitz Time Pressure"),
               html.Div(f"NFL 2021, semaines 1-8 · {fr(len(DF), 0)} dropbacks · {DF.gameId.nunique()} matchs · "
@@ -807,11 +809,13 @@ def km_tab(by, radius, team, week):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--port", type=int, default=8050)
+    ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8050)))
+    ap.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"))
     ap.add_argument("--debug", action="store_true")
     a = ap.parse_args()
-    print(f"Ouvre http://127.0.0.1:{a.port} dans ton navigateur (Ctrl+C pour arrêter).")
-    app.run(host="127.0.0.1", port=a.port, debug=a.debug)
+    where = "http://127.0.0.1" if a.host == "127.0.0.1" else f"le port {a.port}"
+    print(f"Ouvre {where}:{a.port} dans ton navigateur (Ctrl+C pour arrêter).")
+    app.run(host=a.host, port=a.port, debug=a.debug)
 
 
 if __name__ == "__main__":
