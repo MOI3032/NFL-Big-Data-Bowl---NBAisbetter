@@ -72,13 +72,26 @@ REPLAY_CACHE = C.ROOT / "data" / "replay" / "frames.parquet"
 
 @lru_cache(maxsize=1)
 def _replay_cache() -> pd.DataFrame | None:
-    """Compact replay slice built by build_replay_cache.py (~29 MB), if present."""
-    if REPLAY_CACHE.exists():
+    """Compact replay slice built by build_replay_cache.py (~29 MB), if present.
+
+    Guards against a Git-LFS pointer file (a few hundred bytes of text) that was
+    not resolved on the host: that would make read_parquet fail. In that case we
+    fall back to the raw per-game CSV instead of crashing.
+    """
+    if not REPLAY_CACHE.exists():
+        return None
+    if REPLAY_CACHE.stat().st_size < 100_000:  # a real cache is ~29 MB; this is an LFS pointer
+        print(f"[replay] {REPLAY_CACHE} looks like an unresolved Git-LFS pointer "
+              f"({REPLAY_CACHE.stat().st_size} bytes); falling back to raw tracking CSVs.")
+        return None
+    try:
         df = pd.read_parquet(REPLAY_CACHE)
-        for c in ("side", "pff_role", "pff_positionLinedUp"):
-            df[c] = df[c].astype(object)
-        return df
-    return None
+    except Exception as e:  # corrupt / partial file: fall back rather than break replays
+        print(f"[replay] could not read {REPLAY_CACHE}: {e}; falling back to raw tracking CSVs.")
+        return None
+    for c in ("side", "pff_role", "pff_positionLinedUp"):
+        df[c] = df[c].astype(object)
+    return df
 
 
 def _play_tracking(game_id: int, play_id: int, pad_frames: int):
