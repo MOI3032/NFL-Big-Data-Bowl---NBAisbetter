@@ -61,6 +61,9 @@ def build() -> None:
             print(f"  {i}/{len(games)} games · {time.time() - t0:.0f}s")
 
     out = pd.concat(parts, ignore_index=True)
+    # Sort by play so each play's rows sit together: a filtered read (used by the
+    # web app) then touches only one small row group instead of the whole file.
+    out = out.sort_values(["gameId", "playId", "frameId"]).reset_index(drop=True)
     # smaller dtypes
     out["frameId"] = out.frameId.astype("int32")
     out["snap_frame"] = out.snap_frame.astype("int32")
@@ -69,9 +72,12 @@ def build() -> None:
     out["y"] = out.y.astype("float32")
     out["nflId"] = out.nflId.astype("float32")
     out["jerseyNumber"] = out.jerseyNumber.astype("float32")
-    for c in ["side", "pff_role", "pff_positionLinedUp"]:
-        out[c] = out[c].astype("category")
-    out.to_parquet(OUT_FILE, index=False, compression="zstd")
+    # Keep these as plain strings, not category: a filtered read of one play
+    # would otherwise still materialise the full category dictionary.
+    for c in ["side", "pff_role", "pff_positionLinedUp", "displayName"]:
+        out[c] = out[c].astype("string")
+    # Small row groups (~50k rows) so a per-play filter reads a tiny slice.
+    out.to_parquet(OUT_FILE, index=False, compression="zstd", row_group_size=50_000)
 
     mb = OUT_FILE.stat().st_size / 1e6
     print(f"\nWrote {OUT_FILE} · {len(out):,} rows · {out.playId.nunique()} play-slices across "

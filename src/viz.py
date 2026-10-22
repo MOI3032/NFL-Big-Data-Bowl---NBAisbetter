@@ -71,25 +71,33 @@ REPLAY_CACHE = C.ROOT / "data" / "replay" / "frames.parquet"
 
 
 @lru_cache(maxsize=1)
-def _replay_cache() -> pd.DataFrame | None:
-    """Compact replay slice built by build_replay_cache.py (~29 MB), if present.
+def _replay_cache_ok() -> bool:
+    """True if the compact replay parquet is present and is a real file (not an LFS pointer).
 
-    Guards against a Git-LFS pointer file (a few hundred bytes of text) that was
-    not resolved on the host: that would make read_parquet fail. In that case we
-    fall back to the raw per-game CSV instead of crashing.
+    The file is read one play at a time with a pushed-down filter (see
+    `_cache_play`), so it is never loaded whole into memory. This keeps the app
+    well under the 512 MB of a free hosting tier even though the parquet holds
+    7.6M rows.
     """
     if not REPLAY_CACHE.exists():
-        return None
+        return False
     if REPLAY_CACHE.stat().st_size < 100_000:  # a real cache is ~29 MB; this is an LFS pointer
         print(f"[replay] {REPLAY_CACHE} looks like an unresolved Git-LFS pointer "
               f"({REPLAY_CACHE.stat().st_size} bytes); falling back to raw tracking CSVs.")
-        return None
+        return False
+    return True
+
+
+@lru_cache(maxsize=32)
+def _cache_play(game_id: int, play_id: int) -> pd.DataFrame | None:
+    """Read only the rows of one play from the parquet (predicate pushed to pyarrow)."""
     try:
-        df = pd.read_parquet(REPLAY_CACHE)
-    except Exception as e:  # corrupt / partial file: fall back rather than break replays
+        df = pd.read_parquet(REPLAY_CACHE,
+                             filters=[("gameId", "==", game_id), ("playId", "==", play_id)])
+    except Exception as e:
         print(f"[replay] could not read {REPLAY_CACHE}: {e}; falling back to raw tracking CSVs.")
         return None
-    for c in ("side", "pff_role", "pff_positionLinedUp"):
+    for c in ("side", "pff_role", "pff_positionLinedUp", "displayName"):
         df[c] = df[c].astype(object)
     return df
 
@@ -97,17 +105,16 @@ def _replay_cache() -> pd.DataFrame | None:
 def _play_tracking(game_id: int, play_id: int, pad_frames: int):
     """Return (tracking rows snap-pad..end+pad, snap, end, end_event, play).
 
-    Uses the compact parquet cache when available (fast, deploy-friendly); falls
-    back to the raw per-game CSV so local runs work without the cache.
+    Uses the compact parquet cache when available (fast, low memory, deploy-friendly);
+    falls back to the raw per-game CSV so local runs work without the cache.
     """
     plays = load_plays()
     play = plays[(plays.gameId == game_id) & (plays.playId == play_id)].iloc[0]
-    cache = _replay_cache()
-    if cache is not None:
-        t = cache[(cache.gameId == game_id) & (cache.playId == play_id)].copy()
-        if len(t):
+    if _replay_cache_ok():
+        t = _cache_play(game_id, play_id)
+        if t is not None and len(t):
+            t = t.copy()
             snap, end = int(t.snap_frame.iloc[0]), int(t.end_frame.iloc[0])
-            t["displayName"] = t.displayName.astype(object)
             # end_event only drives the "sack vs throw" wording; recover it from plays
             end_event = "qb_sack" if play.passResult == "S" else "pass_forward"
             t = t[t.frameId.between(max(1, snap - pad_frames), end + pad_frames)].reset_index(drop=True)
