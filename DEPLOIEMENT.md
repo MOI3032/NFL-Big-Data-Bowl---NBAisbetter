@@ -12,7 +12,31 @@ L'app est une app **Dash / Flask** (un serveur Python). Elle a besoin, au démar
 
 ---
 
-## Option recommandée : Hugging Face Spaces (Docker)
+## Option recommandée : Render (depuis GitHub)
+
+Gratuit, se branche sur ton dépôt GitHub, détecte le `Dockerfile` et le `render.yaml` tout seul.
+
+1. Pousse le projet sur GitHub (voir « Préparer le dépôt » plus bas).
+2. Va sur https://render.com, crée un compte (tu peux te connecter avec GitHub).
+3. **New** → **Blueprint** → choisis ton dépôt `DataNFL`. Render lit `render.yaml` et crée le service web « pocket-integrity » en plan *Free*. (Sinon : **New → Web Service**, Render détecte le `Dockerfile`, rien à régler.)
+4. Clique **Apply** / **Create**. Render construit l'image puis démarre `gunicorn`. L'URL publique (`https://pocket-integrity-xxxx.onrender.com`) s'affiche quand le build est fini (5-10 min la première fois).
+5. À chaque `git push` suivant, Render redéploie automatiquement.
+
+Limite du plan Free : l'app se met en veille après 15 min sans visite et met ~30 s à redémarrer à la visite suivante. La RAM est limitée à 512 Mo, d'où le réglage « 1 worker » dans le `Dockerfile`.
+
+### Préparer le dépôt (une fois)
+
+Le dépôt est déjà prêt : le tracking brut est exclu, le cache `data/replay/frames.parquet` et le gros CSV passent par Git LFS. Il reste à pousser :
+
+```powershell
+git push origin master
+```
+
+> Render sait lire les fichiers Git LFS au build, donc le parquet des replays arrive bien dans l'image.
+
+---
+
+## Option B : Hugging Face Spaces (Docker)
 
 Gratuit, durable, sans mise en veille, et il gère les fichiers de données.
 
@@ -52,13 +76,6 @@ git push space main
 > ```
 
 ---
-
-## Option B : Render (lié à GitHub)
-
-1. Pousse le projet sur un dépôt GitHub (mêmes fichiers que ci-dessus, via Git LFS).
-2. Sur https://render.com : *New* → *Web Service* → connecte le dépôt.
-3. Render détecte le `Dockerfile` automatiquement. Aucune commande à régler.
-4. Plan **Free**. Limite : le service se met en veille après 15 min sans visite et met ~30 s à redémarrer.
 
 ---
 

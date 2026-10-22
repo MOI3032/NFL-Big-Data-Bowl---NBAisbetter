@@ -1,0 +1,11 @@
+# Configuration Render (détectée automatiquement : Blueprint).
+# Render construit l'image à partir du Dockerfile et lance l'app.
+services:
+  - type: web
+    name: pocket-integrity
+    runtime: docker
+    plan: free
+    region: frankfurt       # change pour "oregon" ou "singapore" si tu préfères
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeploy: true        # redéploie à chaque push sur la branche suivie

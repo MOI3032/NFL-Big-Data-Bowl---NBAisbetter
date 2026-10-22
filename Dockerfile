@@ -15,5 +15,7 @@ ENV PORT=7860
 EXPOSE 7860
 
 # gunicorn sert l'objet WSGI `server` défini dans app.py.
-# 2 workers, 4 threads : assez pour un usage de démo ; chaque worker charge les données au boot.
-CMD ["gunicorn", "--bind", "0.0.0.0:7860", "--workers", "2", "--threads", "4", "--timeout", "120", "app:server"]
+# 1 worker + 8 threads : un seul chargement des données en mémoire (~400 Mo), ce qui tient
+# dans les 512 Mo du free tier de Render. Les threads gèrent plusieurs visiteurs à la fois.
+# $PORT est fourni par l'hébergeur (Render) ; 7860 par défaut (Hugging Face / local Docker).
+CMD gunicorn --bind 0.0.0.0:${PORT:-7860} --workers 1 --threads 8 --timeout 120 app:server
